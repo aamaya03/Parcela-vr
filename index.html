@@ -98,20 +98,23 @@
     <script>
       var sky = document.querySelector('#sky');
       var hotspot = document.querySelector('#hotspot');
+      var sensorIcon = document.querySelector('#info-icon-sensor');
 
       // Secuencia del recorrido. "hotspotPos" es la posición del punto
-      // dorado EN ESA ESCENA (ajústala con el Inspector para que apunte
-      // realmente hacia donde lleva el siguiente salto).
+      // dorado EN ESA ESCENA. "sensorVisible" dice si el ícono del
+      // sensor debe mostrarse en esa escena (ajusta según en cuáles
+      // fotos realmente se ve el equipo).
       var recorrido = [
-        { sky: '#drone1', next: '#drone2', hotspotPos: '0 -0.3 -3' },
-        { sky: '#drone2', next: '#drone3', hotspotPos: '0 -0.3 -3' },
-        { sky: '#drone3', next: '#interior1', hotspotPos: '0 -0.3 -3' },
-        { sky: '#interior1', next: null, hotspotPos: '0 -0.3 -3' }
+        { sky: '#drone1', next: '#drone2', hotspotPos: '0 -0.3 -3', sensorVisible: true },
+        { sky: '#drone2', next: '#drone3', hotspotPos: '0 -0.3 -3', sensorVisible: false },
+        { sky: '#drone3', next: '#interior1', hotspotPos: '0 -0.3 -3', sensorVisible: false },
+        { sky: '#interior1', next: null, hotspotPos: '0 -0.3 -3', sensorVisible: false }
       ];
       var pasoActual = 0;
 
-      // Posición inicial del hotspot (paso 0)
+      // Estado inicial (paso 0)
       hotspot.setAttribute('position', recorrido[0].hotspotPos);
+      sensorIcon.setAttribute('visible', recorrido[0].sensorVisible);
 
       hotspot.addEventListener('click', function () {
         var siguiente = recorrido[pasoActual].next;
@@ -126,6 +129,8 @@
         } else {
           hotspot.setAttribute('visible', false);
         }
+
+        sensorIcon.setAttribute('visible', recorrido[pasoActual].sensorVisible);
       });
 
       // Ícono del sensor: abre/cierra el panel del dashboard
