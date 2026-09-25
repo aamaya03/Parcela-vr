@@ -109,15 +109,13 @@
       var hotspot = document.querySelector('#hotspot');
       var sensorIcon = document.querySelector('#info-icon-sensor');
 
-      // Secuencia del recorrido. "hotspotPos" es la posición del punto
-      // dorado EN ESA ESCENA. "sensorVisible" dice si el ícono del
-      // sensor debe mostrarse en esa escena (ajusta según en cuáles
-      // fotos realmente se ve el equipo).
+      // Secuencia del recorrido, en CICLO: la última parada
+      // ("interior1") vuelve a la primera ("drone1").
       var recorrido = [
         { sky: '#drone1', next: '#drone2', hotspotPos: '0 -0.3 -3', sensorVisible: true },
         { sky: '#drone2', next: '#drone3', hotspotPos: '0 -0.3 -3', sensorVisible: false },
         { sky: '#drone3', next: '#interior1', hotspotPos: '0 -0.3 -3', sensorVisible: false },
-        { sky: '#interior1', next: null, hotspotPos: '0 -0.3 -3', sensorVisible: false }
+        { sky: '#interior1', next: '#drone1', hotspotPos: '0 -0.3 -3', sensorVisible: false }
       ];
       var pasoActual = 0;
 
@@ -127,18 +125,12 @@
 
       hotspot.addEventListener('click', function () {
         var siguiente = recorrido[pasoActual].next;
-        if (!siguiente) return;
-
         sky.setAttribute('src', siguiente);
-        pasoActual++;
 
-        if (recorrido[pasoActual].next) {
-          hotspot.setAttribute('position', recorrido[pasoActual].hotspotPos);
-          hotspot.setAttribute('visible', true);
-        } else {
-          hotspot.setAttribute('visible', false);
-        }
+        // Avanza al siguiente paso, y si es el último, vuelve al 0 (ciclo)
+        pasoActual = (pasoActual + 1) % recorrido.length;
 
+        hotspot.setAttribute('position', recorrido[pasoActual].hotspotPos);
         sensorIcon.setAttribute('visible', recorrido[pasoActual].sensorVisible);
       });
 
@@ -153,3 +145,4 @@
 
   </body>
 </html>
+
