@@ -24,14 +24,10 @@
   </head>
   <body>
 
-    <!-- Botón propio de VR, en la esquina superior izquierda -->
     <button id="boton-vr">Entrar en VR</button>
 
     <a-scene xr-mode-ui="enterVRButton: #boton-vr">
 
-      <!-- ============================================= -->
-      <!-- 1) PRECARGA todas las imágenes aquí.           -->
-      <!-- ============================================= -->
       <a-assets>
         <img id="drone1" src="drone_01.jpg">
         <img id="drone2" src="drone_02.jpg">
@@ -40,101 +36,84 @@
         <img id="dashboard1" src="dashboard_estacion.png">
       </a-assets>
 
-      <!-- La esfera que se ve actualmente. Empieza en la primera foto de dron. -->
       <a-sky id="sky" src="#drone1" rotation="0 0 0"></a-sky>
 
       <!-- ============================================= -->
-      <!-- 2) HOTSPOTS DE DESPLAZAMIENTO                   -->
-      <!-- Ajusta la "position" de cada uno con el         -->
-      <!-- Inspector (Ctrl+Alt+I) para que quede exacto.   -->
+      <!-- UN SOLO hotspot que se reposiciona y apunta al  -->
+      <!-- siguiente punto en cada paso (evita el bug de   -->
+      <!-- varios círculos apilados invisibles).            -->
+      <!-- Ajusta "pos" de cada parada con el Inspector.    -->
       <!-- ============================================= -->
-
-      <!-- De drone1 a drone2 -->
       <a-entity
-        class="hotspot clickable" data-target="#drone2"
+        id="hotspot"
+        class="clickable"
         position="0 -0.3 -3"
         geometry="primitive: circle; radius: 0.3"
         material="color: #FFD700; shader: flat; opacity: 0.85"
         animation__pulse="property: scale; dir: alternate; dur: 800; easing: easeInOutSine; loop: true; to: 1.2 1.2 1.2">
       </a-entity>
 
-      <!-- De drone2 a drone3 -->
-      <a-entity
-        class="hotspot clickable" data-target="#drone3"
-        position="0 -0.3 -3"
-        geometry="primitive: circle; radius: 0.3"
-        material="color: #FFD700; shader: flat; opacity: 0.85"
-        animation__pulse="property: scale; dir: alternate; dur: 800; easing: easeInOutSine; loop: true; to: 1.2 1.2 1.2"
-        visible="false">
-      </a-entity>
-
-      <!-- De drone3 a interior1 (aquí "entras" al cultivo) -->
-      <a-entity
-        class="hotspot clickable" data-target="#interior1"
-        position="0 -0.3 -3"
-        geometry="primitive: circle; radius: 0.3"
-        material="color: #FFD700; shader: flat; opacity: 0.85"
-        animation__pulse="property: scale; dir: alternate; dur: 800; easing: easeInOutSine; loop: true; to: 1.2 1.2 1.2"
-        visible="false">
-      </a-entity>
-
-      <!-- ============================================= -->
-      <!-- 3) ÍCONO DEL SENSOR                              -->
-      <!-- Punto de partida aproximado: se ve el poste con  -->
-      <!-- el panel solar casi al centro de drone_01.       -->
-      <!-- Ajústalo con el Inspector para que quede exacto. -->
-      <!-- ============================================= -->
+      <!-- Ícono del sensor: ajusta esta posición con el Inspector
+           para que quede exactamente sobre el equipo en drone_01 -->
       <a-entity
         id="info-icon-sensor"
         class="clickable"
-        position="0.3 0.2 -3"
+        position="-0.1 0.5 -4"
         geometry="primitive: circle; radius: 0.15"
         material="color: #2196F3; shader: flat"
         animation__pulse="property: scale; dir: alternate; dur: 1000; easing: easeInOutSine; loop: true; to: 1.15 1.15 1.15">
         <a-text value="i" align="center" color="#FFFFFF" width="3" position="0 0 0.01"></a-text>
       </a-entity>
 
-      <!-- Panel con la imagen del dashboard, oculto al inicio -->
-      <a-entity id="dashboard-panel" visible="false" position="0.3 0.2 -2.5">
-        <a-image src="#dashboard1" width="3.2" height="2"></a-image>
-        <a-entity
-          id="close-dashboard"
-          class="clickable"
-          position="1.5 0.9 0.01"
-          geometry="primitive: circle; radius: 0.14"
-          material="color: #FF4444; shader: flat">
-          <a-text value="X" align="center" color="#FFFFFF" width="4" position="0 0 0.01"></a-text>
-        </a-entity>
-      </a-entity>
-
+      <!-- Cámara: el panel del dashboard va DENTRO de la cámara,
+           así siempre aparece fijo frente a ti, sin torcerse -->
       <a-camera>
-        <a-cursor raycaster="objects: .clickable" fuse="true" fuse-timeout="800"></a-cursor>
+        <a-cursor raycaster="objects: .clickable" fuse="false"></a-cursor>
+
+        <a-entity id="dashboard-panel" visible="false" position="0 0 -1.5">
+          <a-image src="#dashboard1" width="1.6" height="1"></a-image>
+          <a-entity
+            id="close-dashboard"
+            class="clickable"
+            position="0.75 0.45 0.01"
+            geometry="primitive: circle; radius: 0.07"
+            material="color: #FF4444; shader: flat">
+            <a-text value="X" align="center" color="#FFFFFF" width="6" position="0 0 0.01"></a-text>
+          </a-entity>
+        </a-entity>
       </a-camera>
 
     </a-scene>
 
     <script>
       var sky = document.querySelector('#sky');
+      var hotspot = document.querySelector('#hotspot');
 
-      document.querySelectorAll('.hotspot').forEach(function (hotspot) {
-        hotspot.addEventListener('click', function () {
-          var target = hotspot.getAttribute('data-target');
-          sky.setAttribute('src', target);
+      // Secuencia del recorrido: cada parada dice a dónde lleva el
+      // siguiente hotspot dorado. La última no tiene "next" (se oculta).
+      var recorrido = [
+        { sky: '#drone1', next: '#drone2' },
+        { sky: '#drone2', next: '#drone3' },
+        { sky: '#drone3', next: '#interior1' },
+        { sky: '#interior1', next: null }
+      ];
+      var pasoActual = 0;
 
-          document.querySelectorAll('.hotspot').forEach(function (h) {
-            h.setAttribute('visible', false);
-          });
+      hotspot.addEventListener('click', function () {
+        var siguiente = recorrido[pasoActual].next;
+        if (!siguiente) return;
 
-          if (target === '#drone2') {
-            document.querySelector('[data-target="#drone3"]').setAttribute('visible', true);
-          } else if (target === '#drone3') {
-            document.querySelector('[data-target="#interior1"]').setAttribute('visible', true);
-          }
-        });
+        sky.setAttribute('src', siguiente);
+        pasoActual++;
+
+        if (recorrido[pasoActual].next) {
+          hotspot.setAttribute('visible', true);
+        } else {
+          hotspot.setAttribute('visible', false);
+        }
       });
 
-      document.querySelector('[data-target="#drone2"]').setAttribute('visible', true);
-
+      // Ícono del sensor: abre/cierra el panel del dashboard
       document.querySelector('#info-icon-sensor').addEventListener('click', function () {
         document.querySelector('#dashboard-panel').setAttribute('visible', true);
       });
