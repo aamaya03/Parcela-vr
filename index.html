@@ -68,8 +68,6 @@
       <!-- Cámara: el panel del dashboard va DENTRO de la cámara,
            así siempre aparece fijo frente a ti, sin torcerse -->
       <a-camera>
-        <a-cursor raycaster="objects: .clickable" fuse="false"></a-cursor>
-
         <a-entity id="dashboard-panel" visible="false" position="0 0 -1.5">
           <a-image src="#dashboard1" width="1.6" height="1"></a-image>
           <a-entity
@@ -82,6 +80,18 @@
           </a-entity>
         </a-entity>
       </a-camera>
+
+      <!-- Cursor normal de mouse en PC: apuntas y haces clic donde
+           está el objeto, sin necesidad de centrar la vista. -->
+      <a-entity
+        cursor="rayOrigin: mouse"
+        raycaster="objects: .clickable; far: 20">
+      </a-entity>
+
+      <!-- Controles láser para las gafas: el rayo sale del control,
+           y el gatillo dispara el clic (más natural que mirar fijo). -->
+      <a-entity laser-controls="hand: left" raycaster="objects: .clickable; far: 20"></a-entity>
+      <a-entity laser-controls="hand: right" raycaster="objects: .clickable; far: 20"></a-entity>
 
     </a-scene>
 
