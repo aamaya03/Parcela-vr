@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Recorrido 360 - Lote de Musáceas</title>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <style>
+      #boton-vr {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        z-index: 99999;
+        padding: 14px 22px;
+        background: #2196F3;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 18px;
+        font-family: sans-serif;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+
+    <!-- Botón propio de VR, en la esquina superior izquierda -->
+    <button id="boton-vr">Entrar en VR</button>
+
+    <a-scene xr-mode-ui="enterVRButton: #boton-vr">
+
+      <!-- ============================================= -->
+      <!-- 1) PRECARGA todas las imágenes aquí.           -->
+      <!-- ============================================= -->
+      <a-assets>
+        <img id="drone1" src="drone_01.jpg">
+        <img id="drone2" src="drone_02.jpg">
+        <img id="drone3" src="drone_03.jpg">
+        <img id="interior1" src="interior_01.jpg">
+        <img id="dashboard1" src="dashboard_estacion.png">
+      </a-assets>
+
+      <!-- La esfera que se ve actualmente. Empieza en la primera foto de dron. -->
+      <a-sky id="sky" src="#drone1" rotation="0 0 0"></a-sky>
+
+      <!-- ============================================= -->
+      <!-- 2) HOTSPOTS DE DESPLAZAMIENTO                   -->
+      <!-- Ajusta la "position" de cada uno con el         -->
+      <!-- Inspector (Ctrl+Alt+I) para que quede exacto.   -->
+      <!-- ============================================= -->
+
+      <!-- De drone1 a drone2 -->
+      <a-entity
+        class="hotspot clickable" data-target="#drone2"
+        position="0 -0.3 -3"
+        geometry="primitive: circle; radius: 0.3"
+        material="color: #FFD700; shader: flat; opacity: 0.85"
+        animation__pulse="property: scale; dir: alternate; dur: 800; easing: easeInOutSine; loop: true; to: 1.2 1.2 1.2">
+      </a-entity>
+
+      <!-- De drone2 a drone3 -->
+      <a-entity
+        class="hotspot clickable" data-target="#drone3"
+        position="0 -0.3 -3"
+        geometry="primitive: circle; radius: 0.3"
+        material="color: #FFD700; shader: flat; opacity: 0.85"
+        animation__pulse="property: scale; dir: alternate; dur: 800; easing: easeInOutSine; loop: true; to: 1.2 1.2 1.2"
+        visible="false">
+      </a-entity>
+
+      <!-- De drone3 a interior1 (aquí "entras" al cultivo) -->
+      <a-entity
+        class="hotspot clickable" data-target="#interior1"
+        position="0 -0.3 -3"
+        geometry="primitive: circle; radius: 0.3"
+        material="color: #FFD700; shader: flat; opacity: 0.85"
+        animation__pulse="property: scale; dir: alternate; dur: 800; easing: easeInOutSine; loop: true; to: 1.2 1.2 1.2"
+        visible="false">
+      </a-entity>
+
+      <!-- ============================================= -->
+      <!-- 3) ÍCONO DEL SENSOR                              -->
+      <!-- Punto de partida aproximado: se ve el poste con  -->
+      <!-- el panel solar casi al centro de drone_01.       -->
+      <!-- Ajústalo con el Inspector para que quede exacto. -->
+      <!-- ============================================= -->
+      <a-entity
+        id="info-icon-sensor"
+        class="clickable"
+        position="0.3 0.2 -3"
+        geometry="primitive: circle; radius: 0.15"
+        material="color: #2196F3; shader: flat"
+        animation__pulse="property: scale; dir: alternate; dur: 1000; easing: easeInOutSine; loop: true; to: 1.15 1.15 1.15">
+        <a-text value="i" align="center" color="#FFFFFF" width="3" position="0 0 0.01"></a-text>
+      </a-entity>
+
+      <!-- Panel con la imagen del dashboard, oculto al inicio -->
+      <a-entity id="dashboard-panel" visible="false" position="0.3 0.2 -2.5">
+        <a-image src="#dashboard1" width="3.2" height="2"></a-image>
+        <a-entity
+          id="close-dashboard"
+          class="clickable"
+          position="1.5 0.9 0.01"
+          geometry="primitive: circle; radius: 0.14"
+          material="color: #FF4444; shader: flat">
+          <a-text value="X" align="center" color="#FFFFFF" width="4" position="0 0 0.01"></a-text>
+        </a-entity>
+      </a-entity>
+
+      <a-camera>
+        <a-cursor raycaster="objects: .clickable" fuse="true" fuse-timeout="800"></a-cursor>
+      </a-camera>
+
+    </a-scene>
+
+    <script>
+      var sky = document.querySelector('#sky');
+
+      document.querySelectorAll('.hotspot').forEach(function (hotspot) {
+        hotspot.addEventListener('click', function () {
+          var target = hotspot.getAttribute('data-target');
+          sky.setAttribute('src', target);
+
+          document.querySelectorAll('.hotspot').forEach(function (h) {
+            h.setAttribute('visible', false);
+          });
+
+          if (target === '#drone2') {
+            document.querySelector('[data-target="#drone3"]').setAttribute('visible', true);
+          } else if (target === '#drone3') {
+            document.querySelector('[data-target="#interior1"]').setAttribute('visible', true);
+          }
+        });
+      });
+
+      document.querySelector('[data-target="#drone2"]').setAttribute('visible', true);
+
+      document.querySelector('#info-icon-sensor').addEventListener('click', function () {
+        document.querySelector('#dashboard-panel').setAttribute('visible', true);
+      });
+      document.querySelector('#close-dashboard').addEventListener('click', function () {
+        document.querySelector('#dashboard-panel').setAttribute('visible', false);
+      });
+    </script>
+
+  </body>
+</html>
