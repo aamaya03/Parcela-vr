@@ -89,15 +89,19 @@
       var sky = document.querySelector('#sky');
       var hotspot = document.querySelector('#hotspot');
 
-      // Secuencia del recorrido: cada parada dice a dónde lleva el
-      // siguiente hotspot dorado. La última no tiene "next" (se oculta).
+      // Secuencia del recorrido. "hotspotPos" es la posición del punto
+      // dorado EN ESA ESCENA (ajústala con el Inspector para que apunte
+      // realmente hacia donde lleva el siguiente salto).
       var recorrido = [
-        { sky: '#drone1', next: '#drone2' },
-        { sky: '#drone2', next: '#drone3' },
-        { sky: '#drone3', next: '#interior1' },
-        { sky: '#interior1', next: null }
+        { sky: '#drone1', next: '#drone2', hotspotPos: '0 -0.3 -3' },
+        { sky: '#drone2', next: '#drone3', hotspotPos: '0 -0.3 -3' },
+        { sky: '#drone3', next: '#interior1', hotspotPos: '0 -0.3 -3' },
+        { sky: '#interior1', next: null, hotspotPos: '0 -0.3 -3' }
       ];
       var pasoActual = 0;
+
+      // Posición inicial del hotspot (paso 0)
+      hotspot.setAttribute('position', recorrido[0].hotspotPos);
 
       hotspot.addEventListener('click', function () {
         var siguiente = recorrido[pasoActual].next;
@@ -107,6 +111,7 @@
         pasoActual++;
 
         if (recorrido[pasoActual].next) {
+          hotspot.setAttribute('position', recorrido[pasoActual].hotspotPos);
           hotspot.setAttribute('visible', true);
         } else {
           hotspot.setAttribute('visible', false);
