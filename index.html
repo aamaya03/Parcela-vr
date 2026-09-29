@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Recorrido 360 - Lote de Musáceas</title>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <style>
+      #boton-vr {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        z-index: 99999;
+        padding: 14px 22px;
+        background: #2196F3;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 18px;
+        font-family: sans-serif;
+        cursor: pointer;
+      }
+      #nombre-escena {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 99999;
+        padding: 10px 18px;
+        background: rgba(0,0,0,0.6);
+        color: white;
+        border-radius: 8px;
+        font-size: 15px;
+        font-family: sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+
+    <button id="boton-vr">Entrar en VR</button>
+    <div id="nombre-escena">Estación principal</div>
+
+    <a-scene xr-mode-ui="enterVRButton: #boton-vr">
+
+      <a-assets>
+        <img id="escena1" src="estacion_instalada.jpg">
+        <img id="escena2" src="estacion_desinstalada.jpg">
+        <img id="escena3" src="sensor_humedad_suelo.jpg">
+        <img id="escena4" src="sensor_microclima_zoom.jpg">
+        <img id="escena5" src="vista_interior_2.jpg">
+        <img id="escena6" src="vista_superior.jpg">
+        <img id="dashboardHumedad" src="dashboard_humedad.png">
+        <video id="videoDashboard" src="dashboard_sucrologgers.mp4" preload="auto" playsinline webkit-playsinline></video>
+      </a-assets>
+
+      <a-sky id="sky" src="#escena1" rotation="0 0 0"></a-sky>
+
+      <!-- Letrero de desplazamiento -->
+      <a-entity
+        id="hotspot"
+        class="clickable"
+        position="0 -0.3 -3"
+        animation__pulse="property: scale; dir: alternate; dur: 900; easing: easeInOutSine; loop: true; to: 1.08 1.08 1.08">
+        <a-plane width="1.5" height="0.45" color="#1B5E20" opacity="0.88" material="shader: flat"></a-plane>
+        <a-plane width="1.5" height="0.45" color="#FFFFFF" opacity="1" scale="1.02 1.1 1" position="0 0 -0.005" material="shader: flat"></a-plane>
+        <a-text id="hotspot-texto" value="Detalle sensores" align="center" color="#1B5E20" width="2.6" wrap-count="20" position="0 0 0.01"></a-text>
+      </a-entity>
+
+      <!-- Ícono de información: sensor de humedad. Solo en esa escena. -->
+      <a-entity
+        id="info-icon-humedad"
+        class="clickable"
+        position="0 0.3 -3"
+        visible="false"
+        geometry="primitive: circle; radius: 0.15"
+        material="color: #2196F3; shader: flat"
+        animation__pulse="property: scale; dir: alternate; dur: 1000; easing: easeInOutSine; loop: true; to: 1.15 1.15 1.15">
+        <a-text value="i" align="center" color="#FFFFFF" width="3" position="0 0 0.01"></a-text>
+      </a-entity>
+
+      <a-entity id="dashboard-panel-humedad" visible="false" position="0 1.2 -3" scale="2 2 2">
+        <a-image src="#dashboardHumedad" width="1.6" height="0.9"></a-image>
+        <a-entity id="close-dashboard-humedad" class="clickable" position="0.75 0.4 0.01"
+          geometry="primitive: circle; radius: 0.07" material="color: #FF4444; shader: flat">
+          <a-text value="X" align="center" color="#FFFFFF" width="0.2" position="0 0 0.01"></a-text>
+        </a-entity>
+      </a-entity>
+
+      <!-- Ícono de información: video del dashboard. Solo en
+           "Estación principal". -->
+      <a-entity
+        id="info-icon-video"
+        class="clickable"
+        position="0 0.3 -3"
+        visible="false"
+        geometry="primitive: circle; radius: 0.15"
+        material="color: #FF9800; shader: flat"
+        animation__pulse="property: scale; dir: alternate; dur: 1000; easing: easeInOutSine; loop: true; to: 1.15 1.15 1.15">
+        <a-text value="▶" align="center" color="#FFFFFF" width="3" position="0 0 0.01"></a-text>
+      </a-entity>
+
+      <a-entity id="video-panel" visible="false" position="0 1.2 -3" scale="2 2 2">
+        <a-video id="video-elemento" src="#videoDashboard" width="1.6" height="0.83" class="clickable"></a-video>
+        <a-entity id="close-video" class="clickable" position="0.75 0.37 0.01"
+          geometry="primitive: circle; radius: 0.07" material="color: #FF4444; shader: flat">
+          <a-text value="X" align="center" color="#FFFFFF" width="0.2" position="0 0 0.01"></a-text>
+        </a-entity>
+      </a-entity>
+
+      <!-- Cursor normal de mouse en PC -->
+      <a-entity cursor="rayOrigin: mouse" raycaster="objects: .clickable; far: 20"></a-entity>
+
+      <!-- Controles láser para las gafas -->
+      <a-entity laser-controls="hand: left" raycaster="objects: .clickable; far: 20"></a-entity>
+      <a-entity laser-controls="hand: right" raycaster="objects: .clickable; far: 20"></a-entity>
+
+      <a-camera></a-camera>
+
+    </a-scene>
+
+    <script>
+      var sky = document.querySelector('#sky');
+      var hotspot = document.querySelector('#hotspot');
+      var hotspotTexto = document.querySelector('#hotspot-texto');
+      var nombreEscena = document.querySelector('#nombre-escena');
+
+      var iconoHumedad = document.querySelector('#info-icon-humedad');
+      var panelHumedad = document.querySelector('#dashboard-panel-humedad');
+
+      var iconoVideo = document.querySelector('#info-icon-video');
+      var panelVideo = document.querySelector('#video-panel');
+      var elementoVideo = document.querySelector('#video-elemento');
+      var videoHTML = document.querySelector('#videoDashboard');
+
+      // Recorrido en CICLO. "sensorHumedad" y "videoInfo" marcan en
+      // qué escena debe verse cada ícono.
+      var recorrido = [
+        { sky: '#escena1', hotspotPos: '0 -0.3 -3', nombre: 'Estación principal', sensorHumedad: false, videoInfo: true },
+        { sky: '#escena2', hotspotPos: '0 -0.3 -3', nombre: 'Detalle sensores', sensorHumedad: false, videoInfo: false },
+        { sky: '#escena3', hotspotPos: '0 -0.3 -3', nombre: 'Sensor de humedad de suelo', sensorHumedad: true, videoInfo: false },
+        { sky: '#escena4', hotspotPos: '0 -0.3 -3', nombre: 'Sensor de microclima', sensorHumedad: false, videoInfo: false },
+        { sky: '#escena5', hotspotPos: '0 -0.3 -3', nombre: 'Interior del cultivo', sensorHumedad: false, videoInfo: false },
+        { sky: '#escena6', hotspotPos: '0 -0.3 -3', nombre: 'Vista superior del cultivo', sensorHumedad: false, videoInfo: false }
+      ];
+      var pasoActual = 0;
+
+      function siguienteIndice(i) {
+        return (i + 1) % recorrido.length;
+      }
+
+      function actualizarLetrero() {
+        var destino = recorrido[siguienteIndice(pasoActual)];
+        hotspot.setAttribute('position', recorrido[pasoActual].hotspotPos);
+        hotspotTexto.setAttribute('value', destino.nombre);
+      }
+
+      function actualizarIconos() {
+        var paso = recorrido[pasoActual];
+
+        iconoHumedad.setAttribute('visible', paso.sensorHumedad);
+        if (!paso.sensorHumedad) panelHumedad.setAttribute('visible', false);
+
+        iconoVideo.setAttribute('visible', paso.videoInfo);
+        if (!paso.videoInfo) {
+          panelVideo.setAttribute('visible', false);
+          videoHTML.pause();
+        }
+      }
+
+      actualizarLetrero();
+      actualizarIconos();
+
+      hotspot.addEventListener('click', function () {
+        var destinoIndice = siguienteIndice(pasoActual);
+        sky.setAttribute('src', recorrido[destinoIndice].sky);
+        pasoActual = destinoIndice;
+        nombreEscena.textContent = recorrido[pasoActual].nombre;
+        actualizarLetrero();
+        actualizarIconos();
+      });
+
+      // Dashboard de humedad (imagen)
+      iconoHumedad.addEventListener('click', function () {
+        panelHumedad.setAttribute('visible', true);
+      });
+      document.querySelector('#close-dashboard-humedad').addEventListener('click', function () {
+        panelHumedad.setAttribute('visible', false);
+      });
+
+      // Video de cómo funciona el dashboard
+      iconoVideo.addEventListener('click', function () {
+        panelVideo.setAttribute('visible', true);
+        videoHTML.currentTime = 0;
+        videoHTML.play();
+      });
+      document.querySelector('#close-video').addEventListener('click', function () {
+        panelVideo.setAttribute('visible', false);
+        videoHTML.pause();
+      });
+      // Clic sobre el video mismo: pausa/reanuda
+      elementoVideo.addEventListener('click', function () {
+        if (videoHTML.paused) { videoHTML.play(); } else { videoHTML.pause(); }
+      });
+    </script>
+
+  </body>
+</html>
