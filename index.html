@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Recorrido 360 - Lote de Musáceas</title>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script>
+      // Hace que un objeto mire SIEMPRE hacia la persona: de frente,
+      // derecho y sin efecto espejo, desde cualquier ángulo.
+      AFRAME.registerComponent('face-camera', {
+        init: function () { this.camPos = new THREE.Vector3(); },
+        tick: function () {
+          var cam = this.el.sceneEl.camera;
+          if (!cam) return;
+          cam.getWorldPosition(this.camPos);
+          this.el.object3D.lookAt(this.camPos);
+        }
+      });
+
+      // Mantiene un contenedor SIEMPRE centrado en la cabeza de la persona
+      // (sin rotarlo). Los íconos van adentro, así quedan en la dirección
+      // correcta de la foto sin importar la altura de quien mira.
+      AFRAME.registerComponent('sigue-camara', {
+        init: function () { this.p = new THREE.Vector3(); },
+        tick: function () {
+          var cam = this.el.sceneEl.camera;
+          if (!cam) return;
+          cam.getWorldPosition(this.p);
+          this.el.object3D.position.copy(this.p);
+        }
+      });
+    </script>
+    <style>
+      #boton-vr {
+        position: fixed; top: 20px; left: 20px; z-index: 99999;
+        padding: 14px 22px; background: #2196F3; color: white; border: none;
+        border-radius: 8px; font-size: 18px; font-family: sans-serif; cursor: pointer;
+      }
+      #nombre-escena {
+        position: fixed; top: 20px; right: 20px; z-index: 99999;
+        padding: 10px 18px; background: rgba(0,0,0,0.6); color: white;
+        border-radius: 8px; font-size: 15px; font-family: sans-serif;
+      }
+      #version {
+        position: fixed; bottom: 10px; left: 10px; z-index: 99999;
+        padding: 4px 10px; background: rgba(0,0,0,0.5); color: #fff;
+        border-radius: 5px; font-size: 12px; font-family: sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+
+    <button id="boton-vr">Entrar en VR</button>
+    <div id="nombre-escena">Estación principal</div>
+    <div id="version">Versión 19</div>
+
+    <a-scene xr-mode-ui="enterVRButton: #boton-vr">
+
+      <a-assets>
+        <img id="escena1" src="estacion_instalada.jpg">
+        <video id="videoDashboard" src="dashboard_sucrologgers.mp4" preload="auto" playsinline webkit-playsinline></video>
+      </a-assets>
+
+      <a-sky id="sky" src="#escena1" rotation="0 -99.1 0"></a-sky>
+
+      <!-- Aquí se crean los íconos de información de cada escena -->
+      <a-entity id="ancla" sigue-camara></a-entity>
+
+      <!-- Panel que se abre: se ubica entre tú y el ícono, de frente a ti -->
+      <a-entity id="info-panel" face-camera visible="false">
+        <a-image id="panel-imagen" width="1.6" height="0.9" visible="false"></a-image>
+        <a-video id="panel-video" src="#videoDashboard" width="1.6" height="0.83" visible="false"></a-video>
+        <a-entity id="cerrar-panel" position="0.8 0.45 0.03"
+          geometry="primitive: circle; radius: 0.07" material="color: #E53935; shader: flat">
+          <a-plane width="0.08" height="0.016" color="#FFFFFF" shader="flat" rotation="0 0 45" position="0 0 0.005"></a-plane>
+          <a-plane width="0.08" height="0.016" color="#FFFFFF" shader="flat" rotation="0 0 -45" position="0 0 0.005"></a-plane>
+        </a-entity>
+      </a-entity>
+
+      <!-- Menú de vistas: fijo en el espacio, arriba al frente -->
+      <a-entity id="menu-vistas" face-camera visible="false" position="0 1.9 -3">
+        <a-plane width="2.05" height="1.95" color="#111111" opacity="0.9" shader="flat"></a-plane>
+      </a-entity>
+
+      <!-- Botón VISTAS: fijo abajo a la izquierda, sin tapar la estación -->
+      <a-entity id="boton-vistas" face-camera position="-1.2 0.6 -2.2" scale="0.5 0.5 0.5">
+        <a-plane width="1.1" height="0.36" color="#FFFFFF" shader="flat"></a-plane>
+        <a-plane id="boton-vistas-clic" class="clickable" width="1.02" height="0.28" color="#2E7D32" shader="flat" position="0 0 0.005"></a-plane>
+        <a-text value="VISTAS" align="center" color="#FFFFFF" width="4.2" position="0 0 0.01"></a-text>
+      </a-entity>
+
+      <a-camera></a-camera>
+
+      <a-entity cursor="rayOrigin: mouse" raycaster="objects: .clickable; far: 60"></a-entity>
+      <a-entity laser-controls="hand: left" raycaster="objects: .clickable; far: 60"></a-entity>
+      <a-entity laser-controls="hand: right" raycaster="objects: .clickable; far: 60"></a-entity>
+
+    </a-scene>
+
+    <script>
+      var sceneEl = document.querySelector('a-scene');
+      var sky = document.querySelector('#sky');
+      var ancla = document.querySelector('#ancla');
+      var nombreEscena = document.querySelector('#nombre-escena');
+
+      var infoPanel = document.querySelector('#info-panel');
+      var panelImagen = document.querySelector('#panel-imagen');
+      var panelVideo = document.querySelector('#panel-video');
+      var cerrarBtn = document.querySelector('#cerrar-panel');
+      var videoHTML = document.querySelector('#videoDashboard');
+
+      // ================== CONFIGURACIÓN ==================
+      // Todas las fotos 360 miden 8000 x 4000 px.
+      var ANCHO_FOTO = 8000, ALTO_FOTO = 4000;
+      var RADIO = 20;                      // distancia de los íconos (m): más lejos = más "al fondo" en las gafas
+      var COLOR_IMAGEN = '#2196F3', COLOR_VIDEO = '#FF9800';
+
+      // skyRot: giro de la foto para que lo importante quede AL FRENTE al entrar.
+      // puntos: los íconos de información de esa escena. Cada uno tiene:
+      //   tipo:   'imagen' (abre una diapositiva), 'video' o 'texto' (abre un cartel con
+      //           el texto que pongas en "texto")
+      //   archivo: la imagen que abre (solo tipo imagen)
+      //   pix:    [x, y] del sensor en la foto 360 (en píxeles de 8000x4000)
+      //   az, el: alternativa a "pix": dirección en grados, ya con la escena girada
+      //   off:    [grados a la derecha, grados hacia arriba] para separar el
+      //           ícono del sensor (con una línea que los une)
+      //   gap:    grados que la línea se queda CORTA antes de llegar al sensor, para no
+      //           taparlo (por defecto 1.5; sensores grandes necesitan más)
+      //   tam:    tamaño del ícono en grados (por defecto 3)
+      //   ancho:  ancho de la imagen que se abre, en metros (por defecto 1.6)
+      var escenas = [
+        {
+          id: '#escena1', archivo: 'estacion_instalada.jpg', nombre: 'Estación principal',
+          skyRot: -99.1,
+          puntos: [ { tipo: 'video', pix: [3982, 2420], off: [-8.29, -4], gap: 2, tam: 5 } ]
+        },
+        {
+          id: null, archivo: 'estacion_desinstalada.jpg', nombre: 'Detalle sensores',
+          skyRot: -94,
+          puntos: [
+            { tipo: 'imagen', archivo: 'slide_datalogger.jpg',    pix: [4051, 1813], off: [6, 2], gap: 2.4 },
+            { tipo: 'imagen', archivo: 'slide_pluviometro.jpg',   pix: [3738, 1893], off: [-6, 3], gap: 3.3 },
+            { tipo: 'imagen', archivo: 'slide_nivel_freatico.jpg', pix: [3818, 2155], off: [-5.8, -10], gap: 2 },
+            { tipo: 'imagen', archivo: 'slide_npk.jpg',           pix: [3842, 2145], off: [-1.9, -10.5], gap: 2.6 },
+            { tipo: 'imagen', archivo: 'slide_multivariable.jpg', pix: [3884, 2132], off: [1.2, -11.1], gap: 2.6 },
+            { tipo: 'imagen', archivo: 'slide_temp_suelo.jpg',    pix: [3946, 2190], off: [3.4, -8.45], gap: 1.2 },
+            { tipo: 'imagen', archivo: 'slide_pot_matrico.jpg',   pix: [4090, 2265], off: [6, -2], gap: 1.6 }
+          ]
+        },
+        {
+          id: null, archivo: 'sensor_humedad_suelo.jpg', nombre: 'Sensor de humedad de suelo',
+          skyRot: 182.26,
+          puntos: [ { tipo: 'imagen', archivo: 'dashboard_humedad.png', ancho: 1.4, pix: [2182, 2340], off: [-12, -3], gap: 3, tam: 4.7 } ]
+        },
+        {
+          id: null, archivo: 'sensor_microclima_zoom.jpg', nombre: 'Sensor de microclima',
+          skyRot: -38,
+          puntos: [ { tipo: 'imagen', archivo: 'dashboard_microclima.png', ancho: 1.8, pix: [5154, 1678], off: [5, -2], gap: 1.7 } ]
+        },
+        {
+          id: null, archivo: 'vista_interior_2.jpg', nombre: 'Interior del cultivo',
+          skyRot: 0,
+          puntos: [ { tipo: 'texto', texto: 'Ovy on the drone', ancho: 1.2, pix: [4830, 1915], off: [0, 8] } ]
+        },
+        { id: null, archivo: 'vista_superior.jpg', nombre: 'Vista superior del cultivo', skyRot: 0, puntos: [] }
+      ];
+      var pasoActual = 0;
+      var ultimoPedido = 0;
+
+      // Un objeto invisible sigue recibiendo clics en A-Frame, así que
+      // además de ocultarlo hay que quitarle la clase "clickable".
+      function setClickable(el, activo) {
+        if (activo) { el.classList.add('clickable'); } else { el.classList.remove('clickable'); }
+      }
+
+      // ---------- Carga de imágenes bajo demanda ----------
+      var cacheFotos = {};
+      var esperando = {};
+      function cargarImagen(archivo, cb) {
+        if (cacheFotos[archivo]) { cb(cacheFotos[archivo].id); return; }
+        if (esperando[archivo]) { esperando[archivo].push(cb); return; }
+        esperando[archivo] = [cb];
+        var img = document.createElement('img');
+        var id = 'foto_' + archivo.replace(/[^a-zA-Z0-9]/g, '_');
+        img.setAttribute('id', id);
+        img.setAttribute('crossorigin', 'anonymous');
+        img.addEventListener('load', function () {
+          cacheFotos[archivo] = { id: id };
+          var lista = esperando[archivo];
+          delete esperando[archivo];
+          lista.forEach(function (f) { f(id); });
+        });
+        img.setAttribute('src', archivo);
+        document.querySelector('a-assets').appendChild(img);
+      }
+
+      // ---------- Texto convertido en imagen (cualquier letra o acento se ve bien) ----------
+      var cacheTextos = {};
+      var contadorTextos = 0;
+      function imagenDeTexto(texto, cb) {
+        if (cacheTextos[texto]) { cb(cacheTextos[texto]); return; }
+        var canvas = document.createElement('canvas');
+        canvas.width = 1024; canvas.height = 256;
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, 1024, 256);
+        ctx.fillStyle = '#1B5E20';
+        ctx.fillRect(12, 12, 1000, 232);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        var tamano = 96;
+        ctx.font = 'bold ' + tamano + 'px sans-serif';
+        while (ctx.measureText(texto).width > 930 && tamano > 30) {
+          tamano -= 4;
+          ctx.font = 'bold ' + tamano + 'px sans-serif';
+        }
+        ctx.fillText(texto, 512, 130);
+
+        var id = 'texto_' + (contadorTextos++);
+        var img = document.createElement('img');
+        img.setAttribute('id', id);
+        img.addEventListener('load', function () { cacheTextos[texto] = id; cb(id); });
+        img.setAttribute('src', canvas.toDataURL('image/png'));
+        document.querySelector('a-assets').appendChild(img);
+      }
+
+      // ---------- Geometría: de la foto 360 a un punto en el espacio ----------
+      function direccion(p, escena) {
+        if (p.pix) {
+          return {
+            az: (p.pix[0] / ANCHO_FOTO - 0.75) * 360 - escena.skyRot,
+            el: 90 - (p.pix[1] / ALTO_FOTO) * 180
+          };
+        }
+        return { az: p.az, el: p.el };
+      }
+      function vectorDesde(az, el, r) {
+        var a = az * Math.PI / 180, e = el * Math.PI / 180;
+        return { x: r * Math.cos(e) * Math.sin(a), y: r * Math.sin(e), z: -r * Math.cos(e) * Math.cos(a) };
+      }
+
+      // ---------- Íconos de información ----------
+      var iconos = [];
+
+      function limpiarIconos() {
+        iconos.forEach(function (g) { if (g.parentNode) g.parentNode.removeChild(g); });
+        iconos = [];
+      }
+
+      function crearPunto(p, escena, indiceEscena) {
+        var d = direccion(p, escena);
+        var off = p.off || [0, 0];
+        var azI = d.az + off[0], elI = d.el + off[1];
+        var r = RADIO;
+        var R = r * Math.tan((p.tam || 3) / 2 * Math.PI / 180);   // radio del círculo
+        var k = R / 0.15;
+        var dz = r * 0.002;              // separación mínima entre capas (evita parpadeos)
+        var pos = vectorDesde(azI, elI, r);
+
+        var grupo = document.createElement('a-entity');
+        grupo.setAttribute('face-camera', '');
+        grupo.setAttribute('position', pos.x + ' ' + pos.y + ' ' + pos.z);
+
+        // Si el ícono está separado del sensor: una línea (que se queda corta
+        // antes de llegar al sensor, para no taparlo) y un puntito al final
+        if (off[0] !== 0 || off[1] !== 0) {
+          var derecha = (d.az - azI) * Math.PI / 180 * r * Math.cos(elI * Math.PI / 180);
+          var arriba = (d.el - elI) * Math.PI / 180 * r;
+          var dist = Math.sqrt(derecha * derecha + arriba * arriba);
+          var hueco = (p.gap !== undefined ? p.gap : 1.5) * Math.PI / 180 * r;
+          var finDer = derecha, finArr = arriba;
+          if (dist > hueco) {
+            var f = (dist - hueco) / dist;
+            finDer = derecha * f;
+            finArr = arriba * f;
+          }
+          var largo = Math.sqrt(finDer * finDer + finArr * finArr);
+
+          var linea = document.createElement('a-plane');
+          linea.setAttribute('width', largo);
+          linea.setAttribute('height', r * 0.004);
+          linea.setAttribute('color', '#FFFFFF');
+          linea.setAttribute('shader', 'flat');
+          linea.setAttribute('opacity', 0.9);
+          linea.setAttribute('position', (finDer / 2) + ' ' + (finArr / 2) + ' ' + (-dz));
+          linea.setAttribute('rotation', '0 0 ' + (Math.atan2(finArr, finDer) * 180 / Math.PI));
+          grupo.appendChild(linea);
+
+          var puntito = document.createElement('a-circle');
+          puntito.setAttribute('radius', r * 0.0035);
+          puntito.setAttribute('color', '#FFFFFF');
+          puntito.setAttribute('shader', 'flat');
+          puntito.setAttribute('position', finDer + ' ' + finArr + ' ' + (-dz));
+          grupo.appendChild(puntito);
+        }
+
+        var circulo = document.createElement('a-entity');
+        circulo.setAttribute('class', 'clickable');
+        circulo.setAttribute('geometry', 'primitive: circle; radius: ' + R + '; segments: 32');
+        circulo.setAttribute('material', 'shader: flat; color: ' + (p.tipo === 'video' ? COLOR_VIDEO : COLOR_IMAGEN));
+        circulo.setAttribute('animation__pulse', 'property: scale; dir: alternate; dur: 1000; easing: easeInOutSine; loop: true; from: 1 1 1; to: 1.15 1.15 1.15');
+
+        if (p.tipo === 'video') {
+          var tri = document.createElement('a-triangle');
+          tri.setAttribute('color', '#FFFFFF');
+          tri.setAttribute('shader', 'flat');
+          tri.setAttribute('vertex-a', (-0.045 * k) + ' ' + (0.06 * k) + ' ' + dz);
+          tri.setAttribute('vertex-b', (-0.045 * k) + ' ' + (-0.06 * k) + ' ' + dz);
+          tri.setAttribute('vertex-c', (0.07 * k) + ' 0 ' + dz);
+          circulo.appendChild(tri);
+        } else {
+          var texto = document.createElement('a-text');
+          texto.setAttribute('value', 'i');
+          texto.setAttribute('align', 'center');
+          texto.setAttribute('color', '#FFFFFF');
+          texto.setAttribute('width', 20 * R);
+          texto.setAttribute('position', '0 0 ' + dz);
+          circulo.appendChild(texto);
+        }
+
+        circulo.addEventListener('click', function () { abrirPanel(p, grupo, indiceEscena); });
+        grupo.appendChild(circulo);
+        return grupo;
+      }
+
+      // ---------- Panel de información ----------
+      function cerrarPanel() {
+        infoPanel.setAttribute('visible', false);
+        panelImagen.setAttribute('visible', false);
+        panelVideo.setAttribute('visible', false);
+        setClickable(panelVideo, false);
+        setClickable(cerrarBtn, false);
+        videoHTML.pause();
+      }
+
+      function abrirPanel(p, grupo, indiceEscena) {
+        cerrarMenu();
+
+        // Ubica el panel entre la persona y el ícono, a 1.8 m, a la altura de los ojos
+        var camPos = new THREE.Vector3();
+        var iconPos = new THREE.Vector3();
+        if (sceneEl.camera) { sceneEl.camera.getWorldPosition(camPos); } else { camPos.set(0, 1.6, 0); }
+        grupo.object3D.getWorldPosition(iconPos);
+        var dx = iconPos.x - camPos.x, dz = iconPos.z - camPos.z;
+        var largo = Math.sqrt(dx * dx + dz * dz) || 1;
+        infoPanel.object3D.position.set(camPos.x + dx / largo * 1.8, camPos.y + 0.05, camPos.z + dz / largo * 1.8);
+
+        if (p.tipo === 'video') {
+          panelImagen.setAttribute('visible', false);
+          cerrarBtn.setAttribute('position', '0.8 0.415 0.03');
+          panelVideo.setAttribute('visible', true);
+          setClickable(panelVideo, true);
+          infoPanel.setAttribute('visible', true);
+          setClickable(cerrarBtn, true);
+          videoHTML.currentTime = 0;
+          videoHTML.play();
+          return;
+        }
+
+        if (p.tipo === 'texto') {
+          imagenDeTexto(p.texto, function (id) { mostrarImagenEnPanel(id, p.ancho || 1.2, indiceEscena); });
+          return;
+        }
+
+        cargarImagen(p.archivo, function (id) { mostrarImagenEnPanel(id, p.ancho || 1.6, indiceEscena); });
+      }
+
+      function mostrarImagenEnPanel(id, ancho, indiceEscena) {
+        if (pasoActual !== indiceEscena) return;      // ya cambió de escena
+        var img = document.getElementById(id);
+        var alto = ancho * img.naturalHeight / img.naturalWidth;
+        panelImagen.setAttribute('src', '#' + id);
+        panelImagen.setAttribute('width', ancho);
+        panelImagen.setAttribute('height', alto);
+        cerrarBtn.setAttribute('position', (ancho / 2) + ' ' + (alto / 2) + ' 0.03');
+        panelVideo.setAttribute('visible', false);
+        setClickable(panelVideo, false);
+        videoHTML.pause();
+        panelImagen.setAttribute('visible', true);
+        infoPanel.setAttribute('visible', true);
+        setClickable(cerrarBtn, true);
+      }
+
+      // En PC, al cambiar de escena vuelve a mirar al frente
+      function mirarAlFrente() {
+        var camEl = document.querySelector('a-camera');
+        var lc = camEl && camEl.components && camEl.components['look-controls'];
+        if (lc && lc.yawObject && lc.pitchObject && !sceneEl.is('vr-mode')) {
+          lc.yawObject.rotation.y = 0;
+          lc.pitchObject.rotation.x = 0;
+        }
+      }
+
+      // ---------- Cambio de escena ----------
+      function mostrarEscena(indice) {
+        pasoActual = indice;
+        var escena = escenas[indice];
+        var referencia = escena.id ? escena.id : ('#' + cacheFotos[escena.archivo].id);
+        sky.setAttribute('src', referencia);
+        sky.setAttribute('rotation', '0 ' + escena.skyRot + ' 0');
+        nombreEscena.textContent = escena.nombre;
+        cerrarPanel();
+        cerrarMenu();
+
+        limpiarIconos();
+        (escena.puntos || []).forEach(function (p) {
+          var g = crearPunto(p, escena, indice);
+          ancla.appendChild(g);
+          iconos.push(g);
+          if (p.tipo === 'imagen') cargarImagen(p.archivo, function () {});   // la va precargando
+        });
+
+        mirarAlFrente();
+      }
+
+      function irAEscena(indice) {
+        var escena = escenas[indice];
+        ultimoPedido = indice;
+        if (escena.id || cacheFotos[escena.archivo]) {
+          mostrarEscena(indice);
+          return;
+        }
+        nombreEscena.textContent = 'Cargando ' + escena.nombre + '...';
+        cargarImagen(escena.archivo, function () {
+          if (ultimoPedido === indice) mostrarEscena(indice);
+        });
+      }
+
+      cerrarBtn.addEventListener('click', cerrarPanel);
+      panelVideo.addEventListener('click', function () {
+        if (videoHTML.paused) { videoHTML.play(); } else { videoHTML.pause(); }
+      });
+
+      // ================== MENÚ "VISTAS" ==================
+      var menuVistas = document.querySelector('#menu-vistas');
+      var botonVistas = document.querySelector('#boton-vistas-clic');
+      var menuAbierto = false;
+      var columnas = 2, filas = 3;
+      var anchoTarjeta = 0.95, altoTarjeta = 0.55, espacio = 0.06;
+      var tarjetas = [];
+
+      function crearTexturaTexto(texto) {
+        var canvas = document.createElement('canvas');
+        canvas.width = 512; canvas.height = 256;
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#1B5E20';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 46px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        var palabras = texto.split(' ');
+        var lineas = [];
+        var lineaActual = '';
+        palabras.forEach(function (palabra) {
+          var prueba = lineaActual ? lineaActual + ' ' + palabra : palabra;
+          if (ctx.measureText(prueba).width > canvas.width - 40 && lineaActual) {
+            lineas.push(lineaActual);
+            lineaActual = palabra;
+          } else {
+            lineaActual = prueba;
+          }
+        });
+        lineas.push(lineaActual);
+        var alturaLinea = 54;
+        var yInicial = canvas.height / 2 - ((lineas.length - 1) * alturaLinea) / 2;
+        lineas.forEach(function (linea, i) {
+          ctx.fillText(linea, canvas.width / 2, yInicial + i * alturaLinea);
+        });
+        return canvas.toDataURL('image/png');
+      }
+
+      escenas.forEach(function (escena, indice) {
+        var col = indice % columnas;
+        var fila = Math.floor(indice / columnas);
+        var x = (col - 0.5) * (anchoTarjeta + espacio);
+        var y = (filas - 1) / 2 * (altoTarjeta + espacio) - fila * (altoTarjeta + espacio);
+        var tarjeta = document.createElement('a-entity');
+        tarjeta.setAttribute('geometry', 'primitive: plane; width: ' + anchoTarjeta + '; height: ' + altoTarjeta);
+        tarjeta.setAttribute('material', { shader: 'flat', src: crearTexturaTexto(escena.nombre) });
+        tarjeta.setAttribute('position', x + ' ' + y + ' 0.01');
+        tarjeta.addEventListener('click', function () { irAEscena(indice); });
+        menuVistas.appendChild(tarjeta);
+        tarjetas.push(tarjeta);
+      });
+
+      function abrirMenu() {
+        cerrarPanel();
+        menuVistas.setAttribute('visible', true);
+        tarjetas.forEach(function (t) { setClickable(t, true); });
+        menuAbierto = true;
+      }
+      function cerrarMenu() {
+        menuVistas.setAttribute('visible', false);
+        tarjetas.forEach(function (t) { setClickable(t, false); });
+        menuAbierto = false;
+      }
+
+      botonVistas.addEventListener('click', function () {
+        if (menuAbierto) { cerrarMenu(); } else { abrirMenu(); }
+      });
+
+      irAEscena(0);
+    </script>
+
+  </body>
+</html>
